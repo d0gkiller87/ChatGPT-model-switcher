@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         ChatGPT force using 4o-mini
+// @name         ChatGPT use 4o-mini model instead of 4o
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  Intercepts completion requests and inject {model: gpt-4o-mini} into the request
