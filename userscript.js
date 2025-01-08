@@ -2,7 +2,7 @@
 // @name         ChatGPT Model Switcher: Toggle on/off 4o-mini
 // @namespace    http://tampermonkey.net/
 // @version      0.21
-// @description  Injects a button allowing you to switch on/off 4o-mini during the chat
+// @description  Injects a button allowing you to toggle on/off 4o-mini during the chat
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
 // @license      MIT
