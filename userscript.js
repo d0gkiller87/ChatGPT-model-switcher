@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         ChatGPT model switcher: switch on/off 4o-mini at will!
+// @name         ChatGPT Model Switcher: Toggle on/off 4o-mini
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.21
 // @description  Injects a button allowing you to switch on/off 4o-mini during the chat
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -102,7 +102,7 @@
               const label = document.createElement( 'label' );
               label.htmlFor = 'cb-toggle';
               label.className = 'toggle';
-              label.title = 'Using model: GPT-4o' + ( this.useMini ? ' mini' : '' );
+              label.title = `Using model: ${ this.useMini ? 'GPT-4o mini' : 'original' }`;
 
               container.appendChild( checkbox );
               container.appendChild( label );
@@ -112,7 +112,7 @@
                 'click', async () => {
                   this.useMini = cb.checked;
                   await GM.setValue( 'useMini', this.useMini );
-                  label.title = 'Using model: GPT-4o' + ( this.useMini ? ' mini' : '' );
+                  label.title = `Using model: ${ this.useMini ? 'GPT-4o mini' : 'original' }`;
                 },
                 false
               );
