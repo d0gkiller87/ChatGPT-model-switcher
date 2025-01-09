@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Model Switcher: Toggle on/off 4o-mini
 // @namespace    http://tampermonkey.net/
-// @version      0.23
+// @version      0.24
 // @description  Injects a button allowing you to toggle on/off 4o-mini during the chat
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -165,15 +165,18 @@
       this.monitorChild( 'body main', () => {
         this.injectToggleButton();
 
-        this.monitorChild( 'main div:first-child div:first-child', () => {
+        this.monitorChild( 'main div:first-child div:first-child', ( observer, mutation ) => {
+          observer.disconnect();
           this.injectToggleButton();
         });
       });
 
-      this.monitorChild( this.containerSelector, () => {
+      this.monitorChild( this.containerSelector, ( observer, mutation ) => {
+        observer.disconnect();
         setTimeout( () => this.injectToggleButton(), 500 );
       });
-      this.monitorChild( 'main div:first-child div:first-child', () => {
+      this.monitorChild( 'main div:first-child div:first-child', ( observer, mutation ) => {
+        observer.disconnect();
         this.injectToggleButton();
       });
     }
