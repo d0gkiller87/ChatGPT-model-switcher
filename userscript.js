@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Model Switcher: Toggle on/off 4o-mini
 // @namespace    http://tampermonkey.net/
-// @version      0.22
+// @version      0.23
 // @description  Injects a button allowing you to toggle on/off 4o-mini during the chat
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -18,22 +18,24 @@
   class ModelSwitcher {
     constructor( useMini = true ) {
       this.useMini = useMini;
+      this.containerSelector = '#composer-background div:nth-of-type(2) div:first-child';
     }
 
     hookFetch() {
       const originalFetch = unsafeWindow.fetch;
       unsafeWindow.fetch = async ( resource, config = {} ) => {
         if (
-          this.useMini &&
           resource === 'https://chatgpt.com/backend-api/conversation' &&
           config.method === 'POST' &&
           config.headers &&
           config.headers['Content-Type'] === 'application/json' &&
           config.body
         ) {
-          const body = JSON.parse( config.body );
-          body.model = 'gpt-4o-mini';
-          config.body = JSON.stringify( body );
+          if ( this.useMini ) {
+            const body = JSON.parse( config.body );
+            body.model = 'gpt-4o-mini';
+            config.body = JSON.stringify( body );
+          }
         }
         return originalFetch( resource, config );
       };
@@ -81,8 +83,21 @@
       }
     }
 
+    getContainer() {
+      return document.querySelector( this.containerSelector );
+    }
+
     injectToggleButton( container = null ) {
-      if ( !container ) container = document.querySelector( '#composer-background div:nth-of-type(2) div:first-child' )
+      console.log( 'inject' );
+      if ( !container ) container = this.getContainer();
+      if ( !container ) {
+        console.error( 'container not found!' );
+        return;
+      }
+      if ( container.querySelector( '#cb-toggle' ) ) {
+        console.log( '#cb-toggle already exists' );
+        return;
+      }
       container.classList.add( 'items-center' );
 
       // <input id="cb-toggle" type="checkbox" class="hide-me">
@@ -112,34 +127,55 @@
       );
     }
 
-    monitorButtons() {
-      const container = document.querySelector( '#composer-background div:nth-of-type(2) div:first-child' );
-      if ( container ) {
-        const observer = new MutationObserver( mutationsList => {
-          for ( const mutation of mutationsList ) {
-            if ( mutation.type !== 'childList' ) continue;
-            if ( !mutation.addedNodes ) continue;
-            observer.disconnect();
-
-            setTimeout( () => this.injectToggleButton( container ), 1000 );
-
-            break;
-          }
-        });
-        observer.observe( container, { childList: true } );
-      } else {
-        console.error( 'container not found!' );
+    monitorChild( nodeSelector, callback ) {
+      const node = document.querySelector( nodeSelector );
+      if ( !node ) {
+        console.log( `${ nodeSelector } not found!` )
+        return;
       }
+      const observer = new MutationObserver( mutationsList => {
+        for ( const mutation of mutationsList ) {
+          console.log( nodeSelector );
+          callback( observer, mutation );
+          break;
+        }
+      });
+      observer.observe( node, { childList: true } );
     }
 
-    monitorMain() {
-      const mainNode = document.querySelector( 'body main' );
+    __tagAttributeRecursively(selector) {
+      // Select the node using the provided selector
+      const rootNode = document.querySelector(selector);
+      if (!rootNode) {
+        console.warn(`No element found for selector: ${selector}`);
+        return;
+      }
 
-      const observer = new MutationObserver( mutationsList => {
+      // Recursive function to add the "xx" attribute to the node and its children
+      function addAttribute(node) {
+        node.setAttribute("xxx", ""); // Add the attribute to the current node
+        Array.from(node.children).forEach(addAttribute); // Recurse for all child nodes
+      }
+
+      addAttribute(rootNode);
+    }
+
+
+    monitorNodesAndInject() {
+      this.monitorChild( 'body main', () => {
         this.injectToggleButton();
+
+        this.monitorChild( 'main div:first-child div:first-child', () => {
+          this.injectToggleButton();
+        });
       });
 
-      observer.observe( mainNode, { childList: true } );
+      this.monitorChild( this.containerSelector, () => {
+        setTimeout( () => this.injectToggleButton(), 500 );
+      });
+      this.monitorChild( 'main div:first-child div:first-child', () => {
+        this.injectToggleButton();
+      });
     }
   }
 
@@ -147,6 +183,5 @@
   const switcher = new ModelSwitcher( useMini );
   switcher.hookFetch();
   switcher.injectToggleButtonStyle();
-  switcher.monitorButtons();
-  switcher.monitorMain();
+  switcher.monitorNodesAndInject();
 })();
