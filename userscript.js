@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Model Switcher: Toggle on/off 4o-mini
 // @namespace    http://tampermonkey.net/
-// @version      0.24
+// @version      0.3
 // @description  Injects a button allowing you to toggle on/off 4o-mini during the chat
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -10,6 +10,7 @@
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @run-at       document-idle
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=chatgpt.com
 // ==/UserScript==
 
 (async function() {
@@ -18,7 +19,7 @@
   class ModelSwitcher {
     constructor( useMini = true ) {
       this.useMini = useMini;
-      this.containerSelector = '#composer-background div:nth-of-type(2) div:first-child';
+      this.containerSelector = 'div[style*=--vt-composer-]';
     }
 
     hookFetch() {
@@ -78,13 +79,14 @@
   opacity: 0;
   height: 0;
   width: 0;
+  display: none;
 }`;
         document.head.appendChild( styleNode );
       }
     }
 
     getContainer() {
-      return document.querySelector( this.containerSelector );
+      return document.querySelector( this.containerSelector ).parentElement;
     }
 
     injectToggleButton( container = null ) {
@@ -127,8 +129,9 @@
       );
     }
 
-    monitorChild( nodeSelector, callback ) {
-      const node = document.querySelector( nodeSelector );
+    monitorChild( nodeSelector, is_parent, callback ) {
+      let node = document.querySelector( nodeSelector );
+      if ( is_parent ) node = node.parentElement;
       if ( !node ) {
         console.log( `${ nodeSelector } not found!` )
         return;
@@ -143,39 +146,40 @@
       observer.observe( node, { childList: true } );
     }
 
-    __tagAttributeRecursively(selector) {
+    __tagAttributeRecursively( selector ) {
       // Select the node using the provided selector
-      const rootNode = document.querySelector(selector);
-      if (!rootNode) {
-        console.warn(`No element found for selector: ${selector}`);
+      const rootNode = document.querySelector( selector );
+      if ( !rootNode ) {
+        console.warn( `No element found for selector: ${ selector }` );
         return;
       }
 
       // Recursive function to add the "xx" attribute to the node and its children
-      function addAttribute(node) {
-        node.setAttribute("xxx", ""); // Add the attribute to the current node
-        Array.from(node.children).forEach(addAttribute); // Recurse for all child nodes
+      function addAttribute( node ) {
+        node.setAttribute( "xxx", "" ); // Add the attribute to the current node
+        Array.from( node.children ).forEach( addAttribute ); // Recurse for all child nodes
       }
 
-      addAttribute(rootNode);
+      addAttribute( rootNode );
     }
 
 
     monitorNodesAndInject() {
-      this.monitorChild( 'body main', () => {
+      this.monitorChild( 'body main' /* switching conversation */, false, () => {
         this.injectToggleButton();
 
-        this.monitorChild( 'main div:first-child div:first-child', ( observer, mutation ) => {
+        this.monitorChild( '.composer-parent > div:nth-child(2)' /* switching conversation */, false, ( observer, mutation ) => {
           observer.disconnect();
           this.injectToggleButton();
         });
       });
 
-      this.monitorChild( this.containerSelector, ( observer, mutation ) => {
+      this.monitorChild( this.containerSelector /* init */, true, ( observer, mutation ) => {
         observer.disconnect();
         setTimeout( () => this.injectToggleButton(), 500 );
       });
-      this.monitorChild( 'main div:first-child div:first-child', ( observer, mutation ) => {
+
+      this.monitorChild( '.composer-parent > div:nth-child(2)' /* switching conversation */, false, ( observer, mutation ) => {
         observer.disconnect();
         this.injectToggleButton();
       });
