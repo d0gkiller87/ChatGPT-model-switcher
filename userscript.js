@@ -168,7 +168,7 @@
       this.monitorChild( 'body main' /* switching conversation */, false, () => {
         this.injectToggleButton();
 
-        this.monitorChild( '.composer-parent > div:nth-child(2)' /* switching conversation */, false, ( observer, mutation ) => {
+        this.monitorChild( '.composer-parent > div:nth-child(2)' /* new conversation */, false, ( observer, mutation ) => {
           observer.disconnect();
           this.injectToggleButton();
         });
@@ -179,7 +179,7 @@
         setTimeout( () => this.injectToggleButton(), 500 );
       });
 
-      this.monitorChild( '.composer-parent > div:nth-child(2)' /* switching conversation */, false, ( observer, mutation ) => {
+      this.monitorChild( '.composer-parent > div:nth-child(2)' /* new conversation */, false, ( observer, mutation ) => {
         observer.disconnect();
         this.injectToggleButton();
       });
