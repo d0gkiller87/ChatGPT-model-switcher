@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Model Switcher: Toggle on/off 4o-mini
 // @namespace    http://tampermonkey.net/
-// @version      0.30
+// @version      0.40
 // @description  Injects a button allowing you to toggle on/off 4o-mini during the chat
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -9,6 +9,7 @@
 // @grant        unsafeWindow
 // @grant        GM.setValue
 // @grant        GM.getValue
+// @grant        GM_addStyle
 // @run-at       document-idle
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=chatgpt.com
 // ==/UserScript==
@@ -19,7 +20,7 @@
   class ModelSwitcher {
     constructor( useMini = true ) {
       this.useMini = useMini;
-      this.containerSelector = 'div[style*=--vt-composer-]';
+      this.buttons = {};
     }
 
     hookFetch() {
@@ -43,146 +44,75 @@
     }
 
     injectToggleButtonStyle() {
-      // Credit: https://webdevworkshop.io/code/css-toggle-button/
-      if ( !document.getElementById( 'toggleCss' ) ) {
-        const styleNode = document.createElement( 'style' );
-        styleNode.id = 'toggleCss';
-        styleNode.type = 'text/css';
-        styleNode.textContent = `.toggle {
-  position: relative;
-  display: inline-block;
-  width: 2.5rem;
-  height: 1.5rem;
-  background-color: hsl(0deg 0% 40%);
-  border-radius: 25px;
-  cursor: pointer;
-  transition: background-color 0.2s ease-in;
-}
-.toggle::after {
-  content: '';
-  position: absolute;
-  width: 1.4rem;
-  left: 0.1rem;
-  height: calc(1.5rem - 2px);
-  top: 1px;
-  background-color: white;
-  border-radius: 50%;
-  transition: all 0.2s ease-out;
-}
-#cb-toggle:checked + .toggle {
-  background-color: hsl(102, 58%, 39%);
-}
-#cb-toggle:checked + .toggle::after {
-  transform: translateX(1rem);
-}
-.hide-me {
-  opacity: 0;
-  height: 0;
-  width: 0;
-  display: none;
-}`;
-        document.head.appendChild( styleNode );
+      GM_addStyle(`
+  #model-selector {
+    position: fixed;
+    bottom: 35px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.1);
+    color: white;
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 9999;
+  }
+  #model-selector button {
+    background: none;
+    border: 1px solid white;
+    color: white;
+    padding: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  #model-selector button.btn-4o-mini {
+    background-color: #43a25a;
+  }
+  #model-selector button.btn-default {
+    background-color: #83838b;
+  }
+`);
+    }
+
+    refreshButtons() {
+      for ( const [ model, button ] of Object.entries( this.buttons ) ) {
+        if ( this.useMini ) {
+          button.classList.toggle( model, model === 'btn-4o-mini' );
+        } else {
+          button.classList.toggle( model, model !== 'btn-4o-mini' );
+        }
       }
     }
 
-    getContainer() {
-      return document.querySelector( this.containerSelector ).parentElement;
-    }
+    createModelSelectorMenu() {
+      this.modelSelector = document.createElement( 'div' );
+      this.modelSelector.id = 'model-selector';
 
-    injectToggleButton( container = null ) {
-      console.log( 'inject' );
-      if ( !container ) container = this.getContainer();
-      if ( !container ) {
-        console.error( 'container not found!' );
-        return;
-      }
-      if ( container.querySelector( '#cb-toggle' ) ) {
-        console.log( '#cb-toggle already exists' );
-        return;
-      }
-      container.classList.add( 'items-center' );
-
-      // <input id="cb-toggle" type="checkbox" class="hide-me">
-      const checkbox = document.createElement( 'input' );
-      checkbox.id = 'cb-toggle';
-      checkbox.type = 'checkbox';
-      checkbox.className = 'hide-me';
-      checkbox.checked = this.useMini;
-
-      // <label for="cb-toggle" class="toggle" title="Toggle GPT-4o Mini"></label>
-      const label = document.createElement( 'label' );
-      label.htmlFor = 'cb-toggle';
-      label.className = 'toggle';
-      label.title = `Using model: ${ this.useMini ? 'GPT-4o mini' : 'original' }`;
-
-      container.appendChild( checkbox );
-      container.appendChild( label );
-
-      const cb = document.querySelector( '#cb-toggle' );
-      cb.addEventListener(
-        'click', async () => {
-          this.useMini = cb.checked;
-          await GM.setValue( 'useMini', this.useMini );
-          label.title = `Using model: ${ this.useMini ? 'GPT-4o mini' : 'original' }`;
-        },
-        false
+      [ '4o-mini', 'default' ].forEach(
+        model => {
+          const button = document.createElement( 'button' );
+          button.textContent = model;//model.charAt(0).toUpperCase() + model.slice(1);
+          button.onclick = async () => {
+            this.useMini = !this.useMini;
+            await GM.setValue( 'useMini', this.useMini );
+            this.refreshButtons();
+          }
+          this.modelSelector.appendChild( button );
+          this.buttons[`btn-${ model }`] = button;
+        }
       );
     }
 
-    monitorChild( nodeSelector, is_parent, callback ) {
-      let node = document.querySelector( nodeSelector );
-      if ( is_parent ) node = node.parentElement;
-      if ( !node ) {
-        console.log( `${ nodeSelector } not found!` )
-        return;
-      }
+    monitorBodyChanges() {
       const observer = new MutationObserver( mutationsList => {
         for ( const mutation of mutationsList ) {
-          console.log( nodeSelector );
-          callback( observer, mutation );
+          if ( document.body.querySelector( '#model-selector' ) ) continue;
+          document.body.appendChild( this.modelSelector );
           break;
         }
       });
-      observer.observe( node, { childList: true } );
-    }
-
-    __tagAttributeRecursively( selector ) {
-      // Select the node using the provided selector
-      const rootNode = document.querySelector( selector );
-      if ( !rootNode ) {
-        console.warn( `No element found for selector: ${ selector }` );
-        return;
-      }
-
-      // Recursive function to add the "xx" attribute to the node and its children
-      function addAttribute( node ) {
-        node.setAttribute( "xxx", "" ); // Add the attribute to the current node
-        Array.from( node.children ).forEach( addAttribute ); // Recurse for all child nodes
-      }
-
-      addAttribute( rootNode );
-    }
-
-
-    monitorNodesAndInject() {
-      this.monitorChild( 'body main' /* switching conversation */, false, () => {
-        this.injectToggleButton();
-
-        this.monitorChild( '.composer-parent > div:nth-child(2)' /* new conversation */, false, ( observer, mutation ) => {
-          observer.disconnect();
-          this.injectToggleButton();
-        });
-      });
-
-      this.monitorChild( this.containerSelector /* init */, true, ( observer, mutation ) => {
-        observer.disconnect();
-        setTimeout( () => this.injectToggleButton(), 500 );
-      });
-
-      this.monitorChild( '.composer-parent > div:nth-child(2)' /* new conversation */, false, ( observer, mutation ) => {
-        observer.disconnect();
-        this.injectToggleButton();
-      });
+      observer.observe( document.body, { childList: true } );
     }
   }
 
@@ -190,5 +120,8 @@
   const switcher = new ModelSwitcher( useMini );
   switcher.hookFetch();
   switcher.injectToggleButtonStyle();
-  switcher.monitorNodesAndInject();
+  switcher.createModelSelectorMenu();
+  switcher.refreshButtons();
+  switcher.monitorBodyChanges();
+  document.body.appendChild( switcher.modelSelector );
 })();
