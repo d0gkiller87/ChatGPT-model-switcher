@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Model Switcher: Toggle on/off 4o-mini
 // @namespace    http://tampermonkey.net/
-// @version      0.40
+// @version      0.41
 // @description  Injects a button allowing you to toggle on/off 4o-mini during the chat
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -21,6 +21,11 @@
     constructor( useMini = true ) {
       this.useMini = useMini;
       this.buttons = {};
+      this.offsetX = 0;
+      this.offsetY = 0;
+      this.isDragging = false;
+      this.shouldCancelClick = false;
+      this.modelSelector = null;
     }
 
     hookFetch() {
@@ -46,9 +51,7 @@
     injectToggleButtonStyle() {
       GM_addStyle(`
   #model-selector {
-    position: fixed;
-    bottom: 35px;
-    right: 20px;
+    position: absolute;
     background-color: rgba(0, 0, 0, 0.1);
     color: white;
     padding: 10px;
@@ -57,6 +60,7 @@
     flex-direction: column;
     gap: 6px;
     z-index: 9999;
+    cursor: grab;
   }
   #model-selector button {
     background: none;
@@ -65,6 +69,7 @@
     padding: 6px;
     cursor: pointer;
     font-size: 0.9rem;
+    user-select: none;
   }
   #model-selector button.btn-4o-mini {
     background-color: #43a25a;
@@ -92,9 +97,14 @@
       [ '4o-mini', 'default' ].forEach(
         model => {
           const button = document.createElement( 'button' );
-          button.textContent = model;//model.charAt(0).toUpperCase() + model.slice(1);
-          button.onclick = async () => {
-            this.useMini = !this.useMini;
+          button.textContent = model;
+          button.onclick = async event => {
+            if ( this.shouldCancelClick ) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              return;
+            }
+            this.useMini = model === '4o-mini';
             await GM.setValue( 'useMini', this.useMini );
             this.refreshButtons();
           }
@@ -102,17 +112,90 @@
           this.buttons[`btn-${ model }`] = button;
         }
       );
+
+      // this.modelSelector = modelSelector;
+      return this.modelSelector;
+    }
+
+    injectMenu() {
+      document.body.appendChild( this.modelSelector );
     }
 
     monitorBodyChanges() {
       const observer = new MutationObserver( mutationsList => {
         for ( const mutation of mutationsList ) {
           if ( document.body.querySelector( '#model-selector' ) ) continue;
-          document.body.appendChild( this.modelSelector );
+          this.injectMenu();
           break;
         }
       });
       observer.observe( document.body, { childList: true } );
+    }
+
+    async restorePosition() {
+      const menuPosition = await GM.getValue(
+        'menuPosition',
+        {
+          left: ( window.innerWidth - this.modelSelector.offsetWidth - 20 ) + 'px',
+          top: ( window.innerHeight - this.modelSelector.offsetHeight - 35 ) + 'px'
+        }
+      );
+      this.modelSelector.style.left = menuPosition.left;
+      this.modelSelector.style.top = menuPosition.top;
+    }
+
+    getPoint( event ) {
+      return event.touches ? event.touches[0] : event;
+    }
+
+    mouseDownHandler( event ) {
+      const point = this.getPoint( event );
+      this.offsetX = point.clientX - this.modelSelector.offsetLeft;
+      this.offsetY = point.clientY - this.modelSelector.offsetTop;
+      this.isDragging = true;
+      this.shouldCancelClick = false;
+      this.modelSelector.style.cursor = 'grabbing';
+    }
+
+    mouseMoveHandler( event ) {
+      if ( !this.isDragging ) return;
+
+      const point = this.getPoint( event );
+      const oldLeft = this.modelSelector.style.left;
+      const oldTop = this.modelSelector.style.top;
+      this.modelSelector.style.left = ( point.clientX - this.offsetX ) + 'px';
+      this.modelSelector.style.top = ( point.clientY - this.offsetY ) + 'px';
+      if ( this.modelSelector.style.left != oldLeft || this.modelSelector.style.top != oldTop ) {
+        this.shouldCancelClick = true;
+      }
+
+      // Prevent scrolling on touch
+      if ( event.cancelable ) event.preventDefault();
+    }
+
+    async mouseUpHandler( event ) {
+      this.isDragging = false;
+      this.modelSelector.style.cursor = 'grab';
+      document.body.style.userSelect = '';
+      await GM.setValue(
+        'menuPosition',
+        {
+          left: this.modelSelector.style.left,
+          top: this.modelSelector.style.top
+        }
+      );
+    }
+
+    registerGrabbing() {
+      // Mouse
+      this.modelSelector.addEventListener( 'mousedown', this.mouseDownHandler.bind( this ) );
+      document.addEventListener( 'mousemove', this.mouseMoveHandler.bind( this ) );
+      document.addEventListener( 'mouseup', this.mouseUpHandler.bind( this ) );
+
+      // Touch
+      this.modelSelector.addEventListener( 'touchstart', this.mouseDownHandler.bind( this ), { passive: false } );
+      document.addEventListener( 'touchmove', this.mouseMoveHandler.bind( this ), { passive: false } );
+      document.addEventListener( 'touchend', this.mouseUpHandler.bind( this ) );
     }
   }
 
@@ -123,5 +206,7 @@
   switcher.createModelSelectorMenu();
   switcher.refreshButtons();
   switcher.monitorBodyChanges();
-  document.body.appendChild( switcher.modelSelector );
+  switcher.injectMenu();
+  await switcher.restorePosition();
+  switcher.registerGrabbing();
 })();
