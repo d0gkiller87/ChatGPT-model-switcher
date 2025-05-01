@@ -1,15 +1,16 @@
 // ==UserScript==
-// @name         ChatGPT Model Switcher: Toggle on/off 4o-mini
+// @name         ChatGPT Model Switcher: 4o-mini, o4-mini, o3 and more!
 // @namespace    http://tampermonkey.net/
-// @version      0.41
-// @description  Injects a button allowing you to toggle on/off 4o-mini during the chat
+// @version      0.50
+// @description  Injects a menu allowing you to select models during a conversation
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
 // @license      MIT
 // @grant        unsafeWindow
-// @grant        GM.setValue
 // @grant        GM.getValue
-// @grant        GM_addStyle
+// @grant        GM.setValue
+// @grant        GM_registerMenuCommand
+// @grant        GM.unregisterMenuCommand
 // @run-at       document-idle
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=chatgpt.com
 // ==/UserScript==
@@ -17,15 +18,69 @@
 (async function() {
   'use strict';
 
+  function injectStyle( style, isDisabled = false ) {
+    const styleNode = document.createElement( 'style' );
+    styleNode.type = 'text/css';
+    styleNode.textContent = style;
+    document.head.appendChild( styleNode );
+    styleNode.disabled = isDisabled;
+    return styleNode;
+  }
+
   class ModelSwitcher {
-    constructor( useMini = true ) {
-      this.useMini = useMini;
+    async init() {
+      this.model = await GM.getValue( 'model', 'auto' );
       this.buttons = {};
       this.offsetX = 0;
       this.offsetY = 0;
       this.isDragging = false;
       this.shouldCancelClick = false;
       this.modelSelector = null;
+      this.isMenuVisible = await GM.getValue( 'isMenuVisible', true );
+      this.isMenuVisibleCommandId = null;
+      this.modelHighlightStyleNode = null;
+      this.isModelHighlightEnabled = await GM.getValue( 'isModelHighlightEnabled', true );
+      this.isModelHighlightEnabledCommandId = null;
+      this.MODELS2 = {
+
+      };
+      const planType = window.__reactRouterContext?.state?.loaderData?.root?.clientBootstrap?.session?.account?.planType;
+
+      let models = {};
+
+      if ( planType === 'pro' ) {
+        for ( const [ key, value ] of Object.entries({
+          "o1-pro": "o1-pro", // unsure
+          // "o1": "o1", // retired?
+          "o3": "o3", // unsure
+        }) ) {
+          models[key] = value
+        }
+      }
+
+     if ( planType === 'plus' || planType === 'pro' ) {
+       for ( const [ key, value ] of Object.entries({
+         "o3": "o1",
+         "gpt-4.5": "gpt-4-5",
+         "o4-mini-high": "o4-mini-high"
+       }) ) {
+         models[key] = value
+       }
+     }
+
+      for ( const [ key, value ] of Object.entries({
+        // "gpt-4o": "gpt-4", // same as 4o
+        "gpt-4o": "gpt-4o",
+        // "o4-mini": "o3-mini", // retired?
+        "o4-mini": "o4-mini",
+        "4o-jawbone": "gpt-4o-jawbone",
+        "4o-mini": "gpt-4o-mini",
+        "default": "auto"
+      }) ) {
+        models[key] = value
+      }
+
+      this.MODELS = models;
     }
 
     hookFetch() {
@@ -38,82 +93,144 @@
           config.headers['Content-Type'] === 'application/json' &&
           config.body
         ) {
-          if ( this.useMini ) {
-            const body = JSON.parse( config.body );
-            body.model = 'gpt-4o-mini';
-            config.body = JSON.stringify( body );
-          }
+          const body = JSON.parse( config.body );
+          body.model = this.model;
+          config.body = JSON.stringify( body );
         }
         return originalFetch( resource, config );
       };
     }
 
     injectToggleButtonStyle() {
-      GM_addStyle(`
-  #model-selector {
-    position: absolute;
-    background-color: rgba(0, 0, 0, 0.1);
-    color: white;
-    padding: 10px;
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    z-index: 9999;
-    cursor: grab;
-  }
-  #model-selector button {
-    background: none;
-    border: 1px solid white;
-    color: white;
-    padding: 6px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    user-select: none;
-  }
-  #model-selector button.btn-4o-mini {
-    background-color: #43a25a;
-  }
-  #model-selector button.btn-default {
-    background-color: #83838b;
-  }
-`);
+      let style = `
+        #model-selector {
+          position: absolute;
+          background-color: rgba(0, 0, 0, 0.1);
+          color: white;
+          padding: 10px;
+          border-radius: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          z-index: 9999;
+          cursor: grab;
+        }
+        #model-selector.hidden {
+          display: none;
+        }
+        #model-selector button {
+          background: none;
+          border: 1px solid white;
+          color: white;
+          padding: 6px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          user-select: none;
+        }
+
+        :root {
+          --o1-color: 139, 232, 27;
+          --o3-color: 139, 232, 27;
+          --gpt-4-5-color: 126, 3, 165;
+          --gpt-4o-color: 18, 45, 134;
+          --o4-mini-high-color: 176, 53, 0;
+          --o4-mini-color: 203, 91, 0;
+          --gpt-4o-jawbone-color: 201, 42, 42;
+          --gpt-4o-mini-color: 67, 162, 90;
+          --auto-color: var(--gpt-4o-color);
+
+          --unknown-model-btn-color: 67, 162, 90;
+          --unknown-model-box-shadow-color: 48, 255, 19;
+        }
+      `;
+
+      for ( const model of Object.values( this.MODELS ) ) {
+        style += `
+          #model-selector button.btn-${ model } {
+            background-color: rgb(var(--${ model }-color, var(--unknown-model-btn-color)));
+          }
+        `;
+      }
+
+      injectStyle( style );
     }
 
     refreshButtons() {
       for ( const [ model, button ] of Object.entries( this.buttons ) ) {
-        if ( this.useMini ) {
-          button.classList.toggle( model, model === 'btn-4o-mini' );
-        } else {
-          button.classList.toggle( model, model !== 'btn-4o-mini' );
-        }
+        const isSelected = model === `btn-${ this.model }`;
+        button.classList.toggle( model, isSelected );
+        button.classList.toggle( 'selected', isSelected );
       }
+    }
+
+    async reloadMenuVisibleToggle() {
+      this.isMenuVisibleCommandId = await GM.registerMenuCommand(
+        `${ this.isMenuVisible ? '☑︎' : '☐' } Show model selector`,
+        async () => {
+          this.isMenuVisible = !this.isMenuVisible;
+          await GM.setValue( 'isMenuVisible', this.isMenuVisible );
+          this.modelSelector.classList.toggle( 'hidden', !this.isMenuVisible );
+          this.reloadMenuVisibleToggle();
+        },
+        this.isMenuVisibleCommandId ? { id: this.isMenuVisibleCommandId } : {}
+      );
+    }
+
+    injectMessageModelHighlightStyle() {
+      let style = `
+        div[data-message-model-slug] {
+          padding: 0px 5px;
+          box-shadow: 0 0 3px 3px rgba(var(--unknown-model-box-shadow-color), 0.65);
+        }
+      `;
+      for ( const model of Object.values( this.MODELS ) ) {
+        style += `
+        div[data-message-model-slug="${ model }"] {
+          box-shadow: 0 0 3px 3px rgba(var(--${ model }-color, var(--unknown-model-box-shadow-color)), 0.8);
+        }
+        `;
+      }
+      this.modelHighlightStyleNode = injectStyle( style, !this.isModelHighlightEnabled );
+    }
+
+    async reloadMessageModelHighlightToggle() {
+      this.isModelHighlightEnabledCommandId = await GM.registerMenuCommand(
+        `${ this.isModelHighlightEnabled ? '☑︎' : '☐' } Show model identifer`,
+        async () => {
+          this.isModelHighlightEnabled = !this.isModelHighlightEnabled;
+          await GM.setValue( 'isModelHighlightEnabled', this.isModelHighlightEnabled );
+          this.modelHighlightStyleNode.disabled = !this.isModelHighlightEnabled;
+          this.reloadMessageModelHighlightToggle();
+        },
+        this.isModelHighlightEnabledCommandId ? { id: this.isModelHighlightEnabledCommandId } : {}
+      );
     }
 
     createModelSelectorMenu() {
       this.modelSelector = document.createElement( 'div' );
       this.modelSelector.id = 'model-selector';
 
-      [ '4o-mini', 'default' ].forEach(
-        model => {
-          const button = document.createElement( 'button' );
-          button.textContent = model;
-          button.onclick = async event => {
+      for ( const [ modelName, modelValue ] of Object.entries( this.MODELS ) ) {
+        const button = document.createElement( 'button' );
+        button.textContent = modelName;
+        button.title = modelValue;
+        button.addEventListener(
+          'click',
+          async event => {
             if ( this.shouldCancelClick ) {
               event.preventDefault();
               event.stopImmediatePropagation();
               return;
             }
-            this.useMini = model === '4o-mini';
-            await GM.setValue( 'useMini', this.useMini );
+            this.model = modelValue;
+            await GM.setValue( 'model', modelValue );
             this.refreshButtons();
           }
-          this.modelSelector.appendChild( button );
-          this.buttons[`btn-${ model }`] = button;
-        }
-      );
-
-      // this.modelSelector = modelSelector;
+        );
+        this.modelSelector.appendChild( button );
+        this.buttons[`btn-${ modelValue }`] = button;
+      }
+      this.modelSelector.classList.toggle( 'hidden', !this.isMenuVisible );
       return this.modelSelector;
     }
 
@@ -132,16 +249,29 @@
       observer.observe( document.body, { childList: true } );
     }
 
-    async restorePosition() {
-      const menuPosition = await GM.getValue(
-        'menuPosition',
-        {
-          left: ( window.innerWidth - this.modelSelector.offsetWidth - 20 ) + 'px',
-          top: ( window.innerHeight - this.modelSelector.offsetHeight - 35 ) + 'px'
-        }
-      );
+    getDefaultMenuPosition() {
+      return {
+        left: ( window.innerWidth - this.modelSelector.offsetWidth - 33 ) + 'px',
+        top: ( window.innerHeight - this.modelSelector.offsetHeight - 36 ) + 'px'
+      };
+    }
+
+    async restoreMenuPosition() {
+      const menuPosition = await GM.getValue( 'menuPosition', this.getDefaultMenuPosition() );
       this.modelSelector.style.left = menuPosition.left;
       this.modelSelector.style.top = menuPosition.top;
+    }
+
+    async registerResetMenuPositionCommand() {
+      await GM.registerMenuCommand(
+        '⟲ Reset menu position',
+        async () => {
+          const defaultMenuPosition = this.getDefaultMenuPosition();
+          this.modelSelector.style.left = defaultMenuPosition.left;
+          this.modelSelector.style.top = defaultMenuPosition.top;
+          await GM.setValue( 'menuPosition', defaultMenuPosition );
+        }
+      );
     }
 
     getPoint( event ) {
@@ -199,14 +329,23 @@
     }
   }
 
-  const useMini = await GM.getValue( 'useMini', true );
-  const switcher = new ModelSwitcher( useMini );
+  const switcher = new ModelSwitcher();
+  await switcher.init();
+
   switcher.hookFetch();
+
   switcher.injectToggleButtonStyle();
+  switcher.injectMessageModelHighlightStyle();
+
   switcher.createModelSelectorMenu();
+  await switcher.registerResetMenuPositionCommand();
+  await switcher.reloadMenuVisibleToggle();
+  await switcher.reloadMessageModelHighlightToggle();
+
   switcher.refreshButtons();
   switcher.monitorBodyChanges();
   switcher.injectMenu();
-  await switcher.restorePosition();
+
+  await switcher.restoreMenuPosition();
   switcher.registerGrabbing();
 })();
