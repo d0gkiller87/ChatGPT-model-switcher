@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Model Switcher: 4o-mini, o4-mini, o3 and more!
 // @namespace    http://tampermonkey.net/
-// @version      0.50
+// @version      0.51
 // @description  Injects a menu allowing you to select models during a conversation
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -13,6 +13,8 @@
 // @grant        GM.unregisterMenuCommand
 // @run-at       document-idle
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=chatgpt.com
+// @downloadURL https://update.greasyfork.org/scripts/514276/ChatGPT%20Model%20Switcher%3A%20Toggle%20onoff%204o-mini.user.js
+// @updateURL https://update.greasyfork.org/scripts/514276/ChatGPT%20Model%20Switcher%3A%20Toggle%20onoff%204o-mini.meta.js
 // ==/UserScript==
 
 (async function() {
@@ -28,6 +30,16 @@
   }
 
   class ModelSwitcher {
+    getPlanType() {
+      for ( const scriptNode of document.querySelectorAll( 'script' ) ) {
+        let match;
+        while ( ( match = /\\"planType\\"\s*,\s*\\"(\w+?)\\"/.exec( scriptNode.innerHTML ) ) !== null ) {
+          return match[1];
+        }
+      }
+      return 'free'
+    }
+
     async init() {
       this.model = await GM.getValue( 'model', 'auto' );
       this.buttons = {};
@@ -41,18 +53,15 @@
       this.modelHighlightStyleNode = null;
       this.isModelHighlightEnabled = await GM.getValue( 'isModelHighlightEnabled', true );
       this.isModelHighlightEnabledCommandId = null;
-      this.MODELS2 = {
 
-      };
-      const planType = window.__reactRouterContext?.state?.loaderData?.root?.clientBootstrap?.session?.account?.planType;
+      const planType = this.getPlanType();
 
       let models = {};
 
       if ( planType === 'pro' ) {
         for ( const [ key, value ] of Object.entries({
-          "o1-pro": "o1-pro", // unsure
-          // "o1": "o1", // retired?
-          "o3": "o3", // unsure
+          // "o1": "o1", // retired
+          "o1-pro": "o1-pro"
         }) ) {
           models[key] = value
         }
@@ -60,7 +69,7 @@
 
      if ( planType === 'plus' || planType === 'pro' ) {
        for ( const [ key, value ] of Object.entries({
-         "o3": "o1",
+         "o3": "o3",
          "gpt-4.5": "gpt-4-5",
          "o4-mini-high": "o4-mini-high"
        }) ) {
@@ -71,7 +80,7 @@
       for ( const [ key, value ] of Object.entries({
         // "gpt-4o": "gpt-4", // same as 4o
         "gpt-4o": "gpt-4o",
-        // "o4-mini": "o3-mini", // retired?
+        // "o3-mini": "o3-mini", // retired?
         "o4-mini": "o4-mini",
         "4o-jawbone": "gpt-4o-jawbone",
         "4o-mini": "gpt-4o-mini",
@@ -129,7 +138,7 @@
         }
 
         :root {
-          --o1-color: 139, 232, 27;
+          --o1-pro-color: 139, 232, 27;
           --o3-color: 139, 232, 27;
           --gpt-4-5-color: 126, 3, 165;
           --gpt-4o-color: 18, 45, 134;
