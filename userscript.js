@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Model Switcher: 4o-mini, o4-mini, o3 and more!
 // @namespace    http://tampermonkey.net/
-// @version      0.51
+// @version      0.52
 // @description  Injects a menu allowing you to select models during a conversation
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -78,6 +78,7 @@
      }
 
       for ( const [ key, value ] of Object.entries({
+        "gpt-3.5": "gpt-3-5",
         // "gpt-4o": "gpt-4", // same as 4o
         "gpt-4o": "gpt-4o",
         // "o3-mini": "o3-mini", // retired?
@@ -140,6 +141,7 @@
         :root {
           --o1-pro-color: 139, 232, 27;
           --o3-color: 139, 232, 27;
+          --gpt-3-5-color: 0, 106, 129;
           --gpt-4-5-color: 126, 3, 165;
           --gpt-4o-color: 18, 45, 134;
           --o4-mini-high-color: 176, 53, 0;
