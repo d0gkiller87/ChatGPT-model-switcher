@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         ChatGPT Model Switcher: 4o-mini, o4-mini, o3 and more!
+// @name         ChatGPT Realtime Model Switcher: 4o-mini, o4-mini, o3 and more!
 // @namespace    http://tampermonkey.net/
-// @version      0.52
-// @description  Injects a menu allowing you to select models during a conversation
+// @version      0.52.1
+// @description  A menu that allows you to switch models during a single conversation
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
 // @license      MIT
@@ -13,8 +13,6 @@
 // @grant        GM.unregisterMenuCommand
 // @run-at       document-idle
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=chatgpt.com
-// @downloadURL https://update.greasyfork.org/scripts/514276/ChatGPT%20Model%20Switcher%3A%20Toggle%20onoff%204o-mini.user.js
-// @updateURL https://update.greasyfork.org/scripts/514276/ChatGPT%20Model%20Switcher%3A%20Toggle%20onoff%204o-mini.meta.js
 // ==/UserScript==
 
 (async function() {
