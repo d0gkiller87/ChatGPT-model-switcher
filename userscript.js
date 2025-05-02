@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Realtime Model Switcher: 4o-mini, o4-mini, o3 and more!
 // @namespace    http://tampermonkey.net/
-// @version      0.52.3
+// @version      0.52.4
 // @description  A menu that allows you to switch models during a single conversation
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -51,6 +51,7 @@
       this.modelHighlightStyleNode = null;
       this.isModelHighlightEnabled = await GM.getValue( 'isModelHighlightEnabled', true );
       this.isModelHighlightEnabledCommandId = null;
+      this.conversationUrlRegex = new RegExp( /https:\/\/chatgpt\.com\/backend-api\/.*conversation/ );
 
       const planType = this.getPlanType();
 
@@ -82,7 +83,7 @@
       const originalFetch = unsafeWindow.fetch;
       unsafeWindow.fetch = async ( resource, config = {} ) => {
         if (
-          resource === 'https://chatgpt.com/backend-api/conversation' &&
+          resource.match( this.conversationUrlRegex ) &&
           config.method === 'POST' &&
           config.headers &&
           config.headers['Content-Type'] === 'application/json' &&
