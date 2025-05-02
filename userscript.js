@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Realtime Model Switcher: 4o-mini, o4-mini, o3 and more!
 // @namespace    http://tampermonkey.net/
-// @version      0.52.2
+// @version      0.52.3
 // @description  A menu that allows you to switch models during a single conversation
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -54,41 +54,28 @@
 
       const planType = this.getPlanType();
 
-      let models = {};
+      const models = [
+        // [ "pro", "o1", "o1" ], // retired
+        [ "pro", "o1-pro", "o1-pro" ],
+        // [ "free", "o3-mini", "o3-mini" ], // retired
+        [ "plus", "o3", "o3" ],
+        [ "free", "o4-mini", "o4-mini" ],
+        [ "plus", "o4-mini-high", "o4-mini-high" ],
+        [ "free", "gpt-3.5", "gpt-3-5" ],
+        [ "free", "4o-mini", "gpt-4o-mini" ],
+        // [ "free", "gpt-4", "gpt-4" ], // same as 4o
+        [ "free", "gpt-4o", "gpt-4o" ],
+        // [ "plus", "4o-jawbone", "4o-jawbone" ], // retired (https://x.com/testingcatalog/status/1915483050953125965)
+        [ "plus", "gpt-4.5", "gpt-4-5" ],
+        [ "free", "default", "auto" ],
+      ];
 
-      if ( planType === 'pro' ) {
-        for ( const [ key, value ] of Object.entries({
-          // "o1": "o1", // retired
-          "o1-pro": "o1-pro"
-        }) ) {
-          models[key] = value
+      this.availableModels = {};
+      for ( const [ minimumPlan, modelName, modelValue ] of models ) {
+        if ( planType === minimumPlan ) {
+          this.availableModels[modelName] = modelValue;
         }
       }
-
-     if ( planType === 'plus' || planType === 'pro' ) {
-       for ( const [ key, value ] of Object.entries({
-         "o3": "o3",
-         "gpt-4.5": "gpt-4-5",
-         "o4-mini-high": "o4-mini-high"
-       }) ) {
-         models[key] = value
-       }
-     }
-
-      for ( const [ key, value ] of Object.entries({
-        "gpt-3.5": "gpt-3-5",
-        // "gpt-4o": "gpt-4", // same as 4o
-        "gpt-4o": "gpt-4o",
-        // "o3-mini": "o3-mini", // retired?
-        "o4-mini": "o4-mini",
-        "4o-jawbone": "gpt-4o-jawbone",
-        "4o-mini": "gpt-4o-mini",
-        "default": "auto"
-      }) ) {
-        models[key] = value
-      }
-
-      this.MODELS = models;
     }
 
     hookFetch() {
@@ -153,7 +140,7 @@
         }
       `;
 
-      for ( const model of Object.values( this.MODELS ) ) {
+      for ( const model of Object.values( this.availableModels ) ) {
         style += `
           #model-selector button.btn-${ model } {
             background-color: rgb(var(--${ model }-color, var(--unknown-model-btn-color)));
@@ -192,7 +179,7 @@
           box-shadow: 0 0 3px 3px rgba(var(--unknown-model-box-shadow-color), 0.65);
         }
       `;
-      for ( const model of Object.values( this.MODELS ) ) {
+      for ( const model of Object.values( this.availableModels ) ) {
         style += `
         div[data-message-model-slug="${ model }"] {
           box-shadow: 0 0 3px 3px rgba(var(--${ model }-color, var(--unknown-model-box-shadow-color)), 0.8);
@@ -219,7 +206,7 @@
       this.modelSelector = document.createElement( 'div' );
       this.modelSelector.id = 'model-selector';
 
-      for ( const [ modelName, modelValue ] of Object.entries( this.MODELS ) ) {
+      for ( const [ modelName, modelValue ] of Object.entries( this.availableModels ) ) {
         const button = document.createElement( 'button' );
         button.textContent = modelName;
         button.title = modelValue;
