@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Realtime Model Switcher: 4o-mini, o4-mini, o3 and more!
 // @namespace    http://tampermonkey.net/
-// @version      0.52.1
+// @version      0.52.2
 // @description  A menu that allows you to switch models during a single conversation
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
@@ -146,7 +146,7 @@
           --o4-mini-color: 203, 91, 0;
           --gpt-4o-jawbone-color: 201, 42, 42;
           --gpt-4o-mini-color: 67, 162, 90;
-          --auto-color: var(--gpt-4o-color);
+          --auto-color: 131, 131, 139;
 
           --unknown-model-btn-color: 67, 162, 90;
           --unknown-model-box-shadow-color: 48, 255, 19;
