@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Realtime Model Switcher: 4o-mini, o4-mini, o3 and more!
 // @namespace    http://tampermonkey.net/
-// @version      0.52.4
+// @version      0.52.5
 // @description  A menu that allows you to switch models during a single conversation
 // @match        *://chatgpt.com/*
 // @author       d0gkiller87
