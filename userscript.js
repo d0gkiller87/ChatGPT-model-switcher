@@ -98,7 +98,8 @@
           config.method === 'POST' &&
           config.headers &&
           config.headers['Content-Type'] === 'application/json' &&
-          config.body
+          config.body &&
+          this.model !== 'auto'
         ) {
           const body = JSON.parse( config.body );
           body.model = this.model;
