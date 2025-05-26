@@ -3,7 +3,7 @@
 // @name:zh-CN        ChatGPT 模型切换助手: 4o-mini、o4-mini、o3 等更多...
 // @name:zh-TW        ChatGPT 模型切換助手: 4o-mini、o4-mini、o3 等更多...
 // @namespace         http://tampermonkey.net/
-// @version           0.52.6
+// @version           0.53.0
 // @description       Allowing you to switch models during a single conversation, and highlight responses by color based on the model generating them
 // @description:zh-CN 让您在对话中随意切换语言模型，并用不同颜色标示生成回应的语言模型
 // @description:zh-TW 讓您在對話中隨意切換語言模型，並用不同顏色標示生成回答的語言模型
