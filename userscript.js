@@ -32,6 +32,12 @@
     return styleNode;
   }
 
+  const PlanType = Object.freeze({
+    free: 0,
+    plus: 1,
+    pro : 2
+  });
+
   class ModelSwitcher {
     getPlanType() {
       for ( const scriptNode of document.querySelectorAll( 'script' ) ) {
@@ -58,27 +64,27 @@
       this.isModelHighlightEnabledCommandId = null;
       this.conversationUrlRegex = new RegExp( /https:\/\/chatgpt\.com\/backend-api\/.*conversation/ );
 
-      const planType = this.getPlanType();
+      const planType = PlanType[ this.getPlanType() ];
 
       const models = [
-        // [ "pro", "o1", "o1" ], // retired
-        [ "pro", "o1-pro", "o1-pro" ],
-        // [ "free", "o3-mini", "o3-mini" ], // retired
-        [ "plus", "o3", "o3" ],
-        [ "free", "o4-mini", "o4-mini" ],
-        [ "plus", "o4-mini-high", "o4-mini-high" ],
-        [ "free", "gpt-3.5", "gpt-3-5" ],
-        [ "free", "4o-mini", "gpt-4o-mini" ],
-        // [ "free", "gpt-4", "gpt-4" ], // same as 4o
-        [ "free", "gpt-4o", "gpt-4o" ],
-        // [ "plus", "4o-jawbone", "4o-jawbone" ], // retired (https://x.com/testingcatalog/status/1915483050953125965)
-        [ "plus", "gpt-4.5", "gpt-4-5" ],
-        [ "free", "default", "auto" ],
+        // [ PlanType.pro, "o1", "o1" ], // retired
+        [ PlanType.pro, "o1-pro", "o1-pro" ],
+        // [ PlanType.free, "o3-mini", "o3-mini" ], // retired
+        [ PlanType.plus, "o3", "o3" ],
+        [ PlanType.free, "o4-mini", "o4-mini" ],
+        [ PlanType.plus, "o4-mini-high", "o4-mini-high" ],
+        [ PlanType.free, "gpt-3.5", "gpt-3-5" ],
+        [ PlanType.free, "4o-mini", "gpt-4o-mini" ],
+        // [ PlanType.free, "gpt-4", "gpt-4" ], // same as 4o
+        [ PlanType.free, "gpt-4o", "gpt-4o" ],
+        // [ PlanType.plus, "4o-jawbone", "4o-jawbone" ], // retired (https://x.com/testingcatalog/status/1915483050953125965)
+        [ PlanType.plus, "gpt-4.5", "gpt-4-5" ],
+        [ PlanType.free, "default", "auto" ],
       ];
 
       this.availableModels = {};
       for ( const [ minimumPlan, modelName, modelValue ] of models ) {
-        if ( planType === minimumPlan ) {
+        if ( planType >= minimumPlan ) {
           this.availableModels[modelName] = modelValue;
         }
       }
