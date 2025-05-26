@@ -75,8 +75,10 @@
         [ PlanType.plus, "o4-mini-high", "o4-mini-high" ],
         [ PlanType.free, "gpt-3.5", "gpt-3-5" ],
         [ PlanType.free, "4o-mini", "gpt-4o-mini" ],
+        [ PlanType.free, "4.1-mini", "gpt-4-1-mini" ],
         // [ PlanType.free, "gpt-4", "gpt-4" ], // same as 4o
         [ PlanType.free, "gpt-4o", "gpt-4o" ],
+        [ PlanType.plus, "gpt-4.1", "gpt-4-1" ],
         // [ PlanType.plus, "4o-jawbone", "4o-jawbone" ], // retired (https://x.com/testingcatalog/status/1915483050953125965)
         [ PlanType.plus, "gpt-4.5", "gpt-4-5" ],
         [ PlanType.free, "default", "auto" ],
@@ -140,12 +142,14 @@
           --o1-pro-color: 139, 232, 27;
           --o3-color: 139, 232, 27;
           --gpt-3-5-color: 0, 106, 129;
+          --gpt-4-1-color: 13, 121, 255;
           --gpt-4-5-color: 126, 3, 165;
           --gpt-4o-color: 18, 45, 134;
           --o4-mini-high-color: 176, 53, 0;
           --o4-mini-color: 203, 91, 0;
           --gpt-4o-jawbone-color: 201, 42, 42;
           --gpt-4o-mini-color: 67, 162, 90;
+          --gpt-4-1-mini-color: 157, 194, 12;
           --auto-color: 131, 131, 139;
 
           --unknown-model-btn-color: 67, 162, 90;
