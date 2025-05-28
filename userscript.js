@@ -3,7 +3,7 @@
 // @name:zh-CN        ChatGPT 模型切换助手: 4o-mini、o4-mini、o3 等更多...
 // @name:zh-TW        ChatGPT 模型切換助手: 4o-mini、o4-mini、o3 等更多...
 // @namespace         http://tampermonkey.net/
-// @version           0.53.1
+// @version           0.54.0
 // @description       Allowing you to switch models during a single conversation, and highlight responses by color based on the model generating them
 // @description:zh-CN 让您在对话中随意切换语言模型，并用不同颜色标示生成回应的语言模型
 // @description:zh-TW 讓您在對話中隨意切換語言模型，並用不同顏色標示生成回答的語言模型
@@ -63,6 +63,8 @@
       this.modelHighlightStyleNode = null;
       this.isModelHighlightEnabled = await GM.getValue( 'isModelHighlightEnabled', true );
       this.isModelHighlightEnabledCommandId = null;
+      this.isMenuVertical = await GM.getValue( 'isMenuVertical', true );
+      this.isMenuVerticalCommandId = null;
       this.conversationUrlRegex = new RegExp( /https:\/\/chatgpt\.com\/backend-api\/.*conversation/ );
 
       const planType = PlanType[ this.getPlanType() ];
@@ -126,6 +128,9 @@
           gap: 6px;
           z-index: 9999;
           cursor: grab;
+        }
+        #model-selector.horizontal {
+          flex-direction: row;
         }
         #model-selector.hidden {
           display: none;
@@ -191,6 +196,33 @@
       );
     }
 
+    async reloadMenuVerticalToggle() {
+      this.isMenuVerticalCommandId = await GM.registerMenuCommand(
+        `┖ style: ${ this.isMenuVertical ? 'vertical ↕' : 'horizontal ↔' }`,
+        async () => {
+          this.isMenuVertical = !this.isMenuVertical;
+          await GM.setValue( 'isMenuVertical', this.isMenuVertical );
+
+          const originalRight = parseInt( this.modelSelector.style.left ) + this.modelSelector.offsetWidth;
+          const originalBottom = parseInt( this.modelSelector.style.top ) + this.modelSelector.offsetHeight;
+
+          this.modelSelector.style.visibility = 'hidden';
+          this.modelSelector.style.left = '0px';
+          this.modelSelector.style.top = '0px';
+
+          this.modelSelector.classList.toggle( 'horizontal', !this.isMenuVertical );
+
+          this.modelSelector.style.left = `${ originalRight - this.modelSelector.offsetWidth }px`;
+          this.modelSelector.style.top = `${ originalBottom - this.modelSelector.offsetHeight }px`;
+          this.modelSelector.style.visibility = 'visible';
+
+          await GM.setValue( 'relativeMenuPosition', this.getCurrentRelativeMenuPosition() );
+          this.reloadMenuVerticalToggle();
+        },
+        this.isMenuVerticalCommandId ? { id: this.isMenuVerticalCommandId } : {}
+      );
+    }
+
     injectMessageModelHighlightStyle() {
       let style = `
         div[data-message-model-slug] {
@@ -246,6 +278,7 @@
         this.buttons[`btn-${ modelValue }`] = button;
       }
       this.modelSelector.classList.toggle( 'hidden', !this.isMenuVisible );
+      this.modelSelector.classList.toggle( 'horizontal', !this.isMenuVertical );
       return this.modelSelector;
     }
 
@@ -389,6 +422,7 @@
   switcher.createModelSelectorMenu();
   await switcher.registerResetMenuPositionCommand();
   await switcher.reloadMenuVisibleToggle();
+  await switcher.reloadMenuVerticalToggle();
   await switcher.reloadMessageModelHighlightToggle();
 
   switcher.refreshButtons();
