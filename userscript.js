@@ -13,6 +13,7 @@
 // @grant             unsafeWindow
 // @grant             GM.getValue
 // @grant             GM.setValue
+// @grant             GM.deleteValue
 // @grant             GM_registerMenuCommand
 // @grant             GM.registerMenuCommand
 // @grant             GM.unregisterMenuCommand
@@ -263,27 +264,67 @@
       observer.observe( document.body, { childList: true } );
     }
 
-    getDefaultMenuPosition() {
+    getDefaultRelativeMenuPosition() {
       return {
-        left: ( window.innerWidth - this.modelSelector.offsetWidth - 33 ) + 'px',
-        top: ( window.innerHeight - this.modelSelector.offsetHeight - 36 ) + 'px'
+        offsetRight: 33,
+        offsetBottom: 36
       };
     }
 
+    relativeToAbsolutePosition( relativeMenuPosition ) {
+      return {
+        left: `${ window.innerWidth - this.modelSelector.offsetWidth - relativeMenuPosition.offsetRight }px`,
+        top: `${ window.innerHeight - this.modelSelector.offsetHeight - relativeMenuPosition.offsetBottom }px`
+      }
+    }
+
+    getCurrentRelativeMenuPosition() {
+      return {
+        offsetRight: window.innerWidth - parseInt( this.modelSelector.style.left ) - this.modelSelector.offsetWidth,
+        offsetBottom: window.innerHeight - parseInt( this.modelSelector.style.top ) - this.modelSelector.offsetHeight
+      }
+    }
+
     async restoreMenuPosition() {
-      const menuPosition = await GM.getValue( 'menuPosition', this.getDefaultMenuPosition() );
-      this.modelSelector.style.left = menuPosition.left;
-      this.modelSelector.style.top = menuPosition.top;
+      const menuPosition = await GM.getValue( 'menuPosition', null ); // <= v0.53.1 migration
+      if ( menuPosition ) {
+        this.modelSelector.style.left = menuPosition.left;
+        this.modelSelector.style.top = menuPosition.top;
+        await GM.setValue(
+          'relativeMenuPosition', {
+            offsetRight: window.innerWidth - parseInt( menuPosition.left ) - this.modelSelector.offsetWidth,
+            offsetBottom: window.innerHeight - parseInt( menuPosition.top ) - this.modelSelector.offsetHeight
+          }
+        );
+        await GM.deleteValue( 'menuPosition' );
+      } else {
+        const relativeMenuPosition = await GM.getValue( 'relativeMenuPosition', this.getDefaultRelativeMenuPosition() );
+        const absoluteMenuPosition = this.relativeToAbsolutePosition( relativeMenuPosition );
+        this.modelSelector.style.left = absoluteMenuPosition.left;
+        this.modelSelector.style.top = absoluteMenuPosition.top;
+      }
+    }
+
+    monitorWindowResize() {
+      window.addEventListener(
+        'resize', async event => {
+          const relativeMenuPosition = await GM.getValue( 'relativeMenuPosition', this.getDefaultRelativeMenuPosition() );
+          const absoluteMenuPosition = this.relativeToAbsolutePosition( relativeMenuPosition );
+          this.modelSelector.style.left = absoluteMenuPosition.left;
+          this.modelSelector.style.top = absoluteMenuPosition.top;
+        }
+      );
     }
 
     async registerResetMenuPositionCommand() {
       await GM.registerMenuCommand(
         '⟲ Reset menu position',
         async () => {
-          const defaultMenuPosition = this.getDefaultMenuPosition();
-          this.modelSelector.style.left = defaultMenuPosition.left;
-          this.modelSelector.style.top = defaultMenuPosition.top;
-          await GM.setValue( 'menuPosition', defaultMenuPosition );
+          const defaultRelativeMenuPosition = this.getDefaultRelativeMenuPosition();
+          const defaultAbsoluteMenuPosition = this.relativeToAbsolutePosition( defaultRelativeMenuPosition );
+          this.modelSelector.style.left = defaultAbsoluteMenuPosition.left;
+          this.modelSelector.style.top = defaultAbsoluteMenuPosition.top;
+          await GM.setValue( 'relativeMenuPosition', defaultRelativeMenuPosition );
         }
       );
     }
@@ -309,7 +350,7 @@
       const oldTop = this.modelSelector.style.top;
       this.modelSelector.style.left = ( point.clientX - this.offsetX ) + 'px';
       this.modelSelector.style.top = ( point.clientY - this.offsetY ) + 'px';
-      if ( this.modelSelector.style.left != oldLeft || this.modelSelector.style.top != oldTop ) {
+      if ( !this.shouldCancelClick && ( this.modelSelector.style.left != oldLeft || this.modelSelector.style.top != oldTop ) ) {
         this.shouldCancelClick = true;
       }
 
@@ -321,13 +362,7 @@
       this.isDragging = false;
       this.modelSelector.style.cursor = 'grab';
       document.body.style.userSelect = '';
-      await GM.setValue(
-        'menuPosition',
-        {
-          left: this.modelSelector.style.left,
-          top: this.modelSelector.style.top
-        }
-      );
+      await GM.setValue( 'relativeMenuPosition', this.getCurrentRelativeMenuPosition() );
     }
 
     registerGrabbing() {
@@ -361,5 +396,6 @@
   switcher.injectMenu();
 
   await switcher.restoreMenuPosition();
+  switcher.monitorWindowResize();
   switcher.registerGrabbing();
 })();
