@@ -3,7 +3,7 @@
 // @name:zh-CN        ChatGPT 模型切换助手: 4o-mini、o4-mini、o3 等更多...
 // @name:zh-TW        ChatGPT 模型切換助手: 4o-mini、o4-mini、o3 等更多...
 // @namespace         http://tampermonkey.net/
-// @version           0.54.0
+// @version           0.54.1
 // @description       Allowing you to switch models during a single conversation, and highlight responses by color based on the model generating them
 // @description:zh-CN 让您在对话中随意切换语言模型，并用不同颜色标示生成回应的语言模型
 // @description:zh-TW 讓您在對話中隨意切換語言模型，並用不同顏色標示生成回答的語言模型
@@ -75,7 +75,7 @@
         // [ PlanType.free, "o3-mini", "o3-mini" ], // retired
         [ PlanType.plus, "o3", "o3" ],
         [ PlanType.free, "o4-mini", "o4-mini" ],
-        [ PlanType.plus, "o4-mini-high", "o4-mini-high" ],
+        [ PlanType.plus, "o4-mini+", "o4-mini-high" ],
         [ PlanType.free, "gpt-3.5", "gpt-3-5" ],
         [ PlanType.free, "4o-mini", "gpt-4o-mini" ],
         [ PlanType.free, "4.1-mini", "gpt-4-1-mini" ],
@@ -117,16 +117,14 @@
 
     injectToggleButtonStyle() {
       let style = `
+        :root {
+          color-scheme: light dark;
+        }
         #model-selector {
           position: absolute;
-          background-color: rgba(0, 0, 0, 0.1);
-          color: white;
-          padding: 10px;
-          border-radius: 10px;
           display: flex;
           flex-direction: column;
           gap: 6px;
-          z-index: 9999;
           cursor: grab;
         }
         #model-selector.horizontal {
@@ -137,26 +135,28 @@
         }
         #model-selector button {
           background: none;
-          border: 1px solid white;
-          color: white;
+          border: 1px solid light-dark(#151515, white);
+          color: light-dark(#151515, white);
           padding: 6px;
           cursor: pointer;
           font-size: 0.9rem;
           user-select: none;
         }
-
+        #model-selector button.selected {
+          color: light-dark(white, white);
+        }
         :root {
-          --o1-pro-color: 139, 232, 27;
-          --o3-color: 139, 232, 27;
+          --o1-pro-color: 0, 255, 255;
+          --o3-color: 225, 221, 0;
           --gpt-3-5-color: 0, 106, 129;
           --gpt-4-1-color: 13, 121, 255;
           --gpt-4-5-color: 126, 3, 165;
           --gpt-4o-color: 18, 45, 134;
-          --o4-mini-high-color: 176, 53, 0;
+          --o4-mini-high-color: 163, 35, 0;
           --o4-mini-color: 203, 91, 0;
           --gpt-4o-jawbone-color: 201, 42, 42;
           --gpt-4o-mini-color: 67, 162, 90;
-          --gpt-4-1-mini-color: 157, 194, 12;
+          --gpt-4-1-mini-color: 117, 166, 12;
           --auto-color: 131, 131, 139;
 
           --unknown-model-btn-color: 67, 162, 90;
@@ -198,7 +198,7 @@
 
     async reloadMenuVerticalToggle() {
       this.isMenuVerticalCommandId = await GM.registerMenuCommand(
-        `┖ style: ${ this.isMenuVertical ? 'vertical ↕' : 'horizontal ↔' }`,
+        `┖ Style: ${ this.isMenuVertical ? 'vertical ↕' : 'horizontal ↔' }`,
         async () => {
           this.isMenuVertical = !this.isMenuVertical;
           await GM.setValue( 'isMenuVertical', this.isMenuVertical );
